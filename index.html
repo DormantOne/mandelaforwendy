@@ -1,0 +1,346 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Combined Audio Visualizer and Mandala Creator</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: Arial, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+        }
+
+        #combinedContainer {
+            position: relative;
+            flex-grow: 2; /* Allows this container to take up more space */
+            width: 100%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        #mandalaContainer {
+            flex: 1 1 auto; /* Makes the mandala container flexible */
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 10px;
+        }
+
+        #mandalaCanvas {
+            border: 1px solid black;
+            aspect-ratio: 1 / 1; /* Keeps the canvas circular */
+            max-width: 700px;
+            max-height: 700px;
+        }
+        #microphonePrompt {
+            font-size: 20px; /* Adjust the size as needed */
+            margin-top: 10px;
+            margin-bottom: 10px;
+        }
+
+        #audioContainer {
+            width: 80%;
+            flex-grow: 1; /* Allows this container to expand but less than the combinedContainer */
+        }
+
+        canvas {
+            width: 100%;
+            height: 200px;
+            border: 1px solid black;
+            margin-top: 10px;
+        }
+
+        #controls {
+            display: flex;
+            justify-content: space-around;
+            margin-top: 10px;
+        }
+        #mandalaControls {
+            display: flex;
+            justify-content: space-around;
+            margin-top: 10px;
+        }
+        .control-group {
+            display: flex;
+            justify-content: space-around;
+            align-items: center;
+            margin-top: 10px;
+        }
+
+        #grid {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            text-align: center;
+        }
+
+        label {
+            display: block;
+        }
+    </style>
+</head>
+<body>
+    <!-- Combined Container for Circle and Mandala -->
+    <div id="combinedContainer">
+        <div id="mandalaContainer">
+            <canvas id="mandalaCanvas"></canvas>
+        </div>
+    </div>
+
+    <!-- Audio Visualizer and Controls -->
+    <div id="audioContainer">
+        <h6 id="microphonePrompt">Speak into your microphone</h6>
+
+        <div>Current Amplitude: <span id="amplitudeValue">0</span></div>
+        <canvas id="audioCanvas"></canvas>
+        <div id="grid">
+            <div id="avg1">0</div>
+            <div id="avg2">0</div>
+            <div id="avg3">0</div>
+            <div id="avg4">0</div>
+            <div id="avg5">0</div>
+        </div>
+        <!-- Graph Controls -->
+        <div class="control-group"  id="graphControls">
+            <div><label>Subtract: <input type="range" id="subtractSlider" min="0" max="100" value="0"></label></div>
+            <div><label>Percentage: <input type="range" id="percentageSlider" min="0" max="100" value="30"></label></div>
+            <div><label>Graph Height: <input type="range" id="graphHeightSlider" min="-5" max="5" value="1" step="0.01"></label></div>
+            <div><label>Vertical Offset: <input type="range" id="verticalOffsetSlider" min="-100" max="100" value="0"></label></div>
+            <div><label>Amplitude vs. Pitch: <input type="range" id="balanceSlider" min="0" max="100" value="50"></label></div>
+        </div>
+
+        <!-- Mandala Controls -->
+        <div class="control-group" id="mandalaControls">
+            <div><label for="sizeControl">Size:</label><input type="range" id="sizeControl" min="10" max="200" value="100"></div>
+            <div><label for="sidesControl">Sides (0 for circle):</label><input type="range" id="sidesControl" min="3" max="12" value="0"></div>
+            <div><label for="spinControl">Spin Rate:</label><input type="range" id="spinControl" min="0" max="10" value="1"></div>
+        </div>
+
+    </div>
+
+ 
+  
+
+
+
+
+    <script>
+        let mandalaCanvas = document.getElementById('mandalaCanvas');
+        let mandalaCtx = mandalaCanvas.getContext('2d');
+        let sizeSlider = document.getElementById('sizeControl');
+        let sidesSlider = document.getElementById('sidesControl');
+        let spinControl = document.getElementById('spinControl');
+        let hues = [];
+        let rotationAngle = 0;
+        let currentAmplitude = 0;
+
+        function getColorBasedOnValue(value) {
+            const hue = Math.max(0, Math.min(360, (value / 1000) * 360));
+            return `hsl(${hue}, 100%, 50%)`;
+        }
+
+        function drawSegment(x, y, outerRadius, innerRadius, startAngle, endAngle, hueIndex) {
+            mandalaCtx.beginPath();
+            mandalaCtx.arc(x, y, outerRadius, startAngle, endAngle);
+            mandalaCtx.arc(x, y, innerRadius, endAngle, startAngle, true);
+            mandalaCtx.closePath();
+            mandalaCtx.fillStyle = `hsl(${hues[hueIndex]}, 100%, 50%)`;
+            mandalaCtx.fill();
+            mandalaCtx.stroke();
+            hues[hueIndex] = (hues[hueIndex] + 1) % 360;
+        }
+
+        function drawMandala(size, sides, rotation, amplitude) {
+            mandalaCtx.clearRect(0, 0, mandalaCanvas.width, mandalaCanvas.height);
+            mandalaCtx.save();
+            mandalaCtx.translate(mandalaCanvas.width / 2, mandalaCanvas.height / 2);
+            mandalaCtx.rotate(rotation);
+            mandalaCtx.translate(-mandalaCanvas.width / 2, -mandalaCanvas.height / 2);
+            mandalaCtx.lineWidth = 2;
+            mandalaCtx.strokeStyle = '#000';
+
+            const centerX = mandalaCanvas.width / 2;
+            const centerY = mandalaCanvas.height / 2;
+            const numShapes = 6;
+            const step = 2 * Math.PI / sides;
+
+            if (hues.length !== sides * numShapes) {
+                hues = [];
+                for (let i = 0; i < sides * numShapes; i++) {
+                    hues.push(Math.floor(Math.random() * 360));
+                }
+            }
+
+            for (let i = 0; i < numShapes; i++) {
+                let outerRadius = size * (i + 1) / numShapes;
+                let innerRadius = i > 0 ? size * i / numShapes : 0;
+                for (let j = 0; j < sides; j++) {
+                    let startAngle = step * j;
+                    let endAngle = step * (j + 1);
+                    let hueIndex = i * sides + j;
+                    drawSegment(centerX, centerY, outerRadius, innerRadius, startAngle, endAngle, hueIndex);
+                }
+            }
+
+            let circleRadius = Math.min(amplitude / 10, 50);
+            mandalaCtx.beginPath();
+            mandalaCtx.arc(centerX, centerY, circleRadius, 0, 2 * Math.PI);
+            mandalaCtx.fillStyle = getColorBasedOnValue(amplitude);
+            mandalaCtx.fill();
+            mandalaCtx.stroke();
+
+            mandalaCtx.restore();
+        }
+
+        function animate() {
+            rotationAngle += spinControl.value * 0.01;
+            drawMandala(sizeSlider.value, sidesSlider.value, rotationAngle, currentAmplitude);
+            requestAnimationFrame(animate);
+        }
+
+        sizeSlider.addEventListener('input', () => drawMandala(sizeSlider.value, sidesSlider.value, rotationAngle, currentAmplitude));
+        sidesSlider.addEventListener('input', () => drawMandala(sizeSlider.value, sidesSlider.value, rotationAngle, currentAmplitude));
+        spinControl.addEventListener('input', () => drawMandala(sizeSlider.value, sidesSlider.value, rotationAngle, currentAmplitude));
+
+        animate();
+    </script>
+
+    <script>
+        let audioCanvas = document.getElementById('audioCanvas');
+        let audioCtx = audioCanvas.getContext('2d');
+        let audioContext, analyser, dataArray;
+        let graphPoints = [];
+        const maxGraphPoints = audioCanvas.width;
+        const amplitudeDisplay = document.getElementById('amplitudeValue');
+        const avgElements = Array.from(document.querySelectorAll('#grid div'));
+        const subtractSlider = document.getElementById('subtractSlider');
+        const percentageSlider = document.getElementById('percentageSlider');
+        const graphHeightSlider = document.getElementById('graphHeightSlider');
+        const balanceSlider = document.getElementById('balanceSlider');
+
+        function calculateFrequencyAndAmplitude() {
+            analyser.getByteFrequencyData(dataArray);
+
+            let maxAmplitude = 0;
+            let maxAmplitudeIndex = 0;
+            for (let i = 0; i < dataArray.length; i++) {
+                if (dataArray[i] > maxAmplitude) {
+                    maxAmplitude = dataArray[i];
+                    maxAmplitudeIndex = i;
+                }
+            }
+
+            let frequency = maxAmplitudeIndex * audioContext.sampleRate / analyser.fftSize;
+            let amplitude = maxAmplitude;
+
+            const balance = parseFloat(balanceSlider.value) / 100;
+            const totalWeight = 2;
+            const amplitudeWeight = (1 - balance) * totalWeight;
+            const frequencyWeight = balance * totalWeight;
+
+            const balancedValue = (amplitude * amplitudeWeight) * (frequency * frequencyWeight);
+
+
+            console.log('Frequency:', frequency, 'Amplitude:', amplitude, 'Balanced Value:', balancedValue);
+            return balancedValue;
+        }
+
+        function updateAverageDisplay() {
+            const numValues = Math.min(graphPoints.length, 200);
+            let sum = 0;
+            for (let i = 0; i < numValues; i++) {
+                sum += graphPoints[graphPoints.length - 1 - i];
+            }
+            const average = sum / numValues;
+
+            console.log("Graph Points: ", graphPoints.slice(-5)); // Log the last 5 graph points
+            console.log("Sum: ", sum, "Num Values: ", numValues, "Average: ", average); // Log sum, numValues, and average
+
+            const subtractValue = parseFloat(subtractSlider.value) * 300;
+            const percentageValue = parseFloat(percentageSlider.value) / 3500;
+
+            console.log("Subtract Value: ", subtractValue, "Percentage Value: ", percentageValue); // Log the subtract and percentage values
+
+            for (let i = 0; i < 5; i++) {
+                const val = graphPoints.length > i ? graphPoints[graphPoints.length - 1 - i] : 0;
+                const adjustedValue = (val - subtractValue) * percentageValue;
+                console.log(`avg${i + 1} Adjusted Value: `, adjustedValue); // Log each adjusted value for the grid
+                avgElements[i].textContent = adjustedValue.toFixed(2);
+            }
+
+            return average;
+        }
+
+
+
+
+        function draw() {
+            requestAnimationFrame(draw);
+
+            let balancedValue = calculateFrequencyAndAmplitude();
+            graphPoints.push(balancedValue);
+            if (graphPoints.length > maxGraphPoints) {
+                graphPoints.shift();
+            }
+
+            updateAverageDisplay(); // Update grid values first
+
+            // Update currentAmplitude based on the first grid value
+            const firstGridValue = parseFloat(avgElements[0].textContent);
+            currentAmplitude = firstGridValue;
+
+            amplitudeDisplay.textContent = `Current Amplitude: ${currentAmplitude.toFixed(2)}`;
+
+            audioCtx.fillStyle = 'rgb(255, 255, 255)';
+            audioCtx.fillRect(0, 0, audioCanvas.width, audioCanvas.height);
+
+            audioCtx.beginPath();
+            audioCtx.strokeStyle = 'rgb(50, 50, 50)';
+            const graphHeightScale = parseFloat(graphHeightSlider.value);
+            const verticalOffset = parseFloat(verticalOffsetSlider.value);
+            graphPoints.forEach((val, i) => {
+                let y = (audioCanvas.height - (val / 1000) * graphHeightScale) + verticalOffset;
+                if (i === 0) {
+                    audioCtx.moveTo(i, y);
+                } else {
+                    audioCtx.lineTo(i, y);
+                }
+            });
+            audioCtx.stroke();
+
+            drawMandala(sizeSlider.value, sidesSlider.value, rotationAngle, currentAmplitude);
+        }
+
+
+
+
+
+
+        async function initAudio() {
+            console.log('Initializing audio...');
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                console.log('Audio stream obtained:', stream);
+                audioContext = new AudioContext();
+                analyser = audioContext.createAnalyser();
+                const source = audioContext.createMediaStreamSource(stream);
+                source.connect(analyser);
+                analyser.fftSize = 2048;
+                dataArray = new Uint8Array(analyser.frequencyBinCount);
+                draw();
+            } catch (err) {
+                console.error('Error getting audio stream:', err);
+            }
+        }
+
+        initAudio();
+    </script>
+
+</body>
+</html>
+
+
