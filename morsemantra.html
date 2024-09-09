@@ -53,10 +53,9 @@
             '8': '---..', '9': '----.', '0': '-----', ' ': ' '
         };
 
-        let vibrationInterval;
+        let vibrationTimeout;
         let wakeLock = null;
 
-        // Function to convert text to Morse code
         function textToMorse(text) {
             return text.toUpperCase().split('').map(char => morseCodeMap[char] || '').join(' ');
         }
@@ -108,22 +107,20 @@
                 pattern.push(pauseDuration);
             }
 
-            const totalPatternDuration = pattern.reduce((a, b) => a + b, 0) + 1000; // Add 1000 ms (1 second) pause between cycles
-
-            // Start vibrating in a loop
-            vibrationInterval = setInterval(() => {
-                navigator.vibrate(pattern); // Play the pattern
+            if (pattern.length > 0) {
+                navigator.vibrate(pattern); // Directly use the vibrate method with the pattern
                 console.log('Vibrating with pattern:', pattern);
-            }, totalPatternDuration);
+                
+                // Calculate the total duration of the vibration pattern to restart after it completes
+                const totalPatternDuration = pattern.reduce((a, b) => a + b, 0) + 1000; // Add 1000 ms (1 second) pause between cycles
+
+                // Schedule the next cycle after the current one finishes
+                vibrationTimeout = setTimeout(playMorseCode, totalPatternDuration);
+            }
         }
 
         document.getElementById('start-button').addEventListener('click', () => {
-            const dotDuration = parseInt(document.getElementById('dot-duration').value);
-            const dashDuration = parseInt(document.getElementById('dash-duration').value);
-            const pauseDuration = parseInt(document.getElementById('pause-duration').value);
-
             if (navigator.vibrate) {
-                // Request wake lock to keep the screen on
                 requestWakeLock();
                 playMorseCode(); // Start vibrating in a loop
             } else {
@@ -133,10 +130,9 @@
 
         document.getElementById('stop-button').addEventListener('click', () => {
             // Stop vibration
-            clearInterval(vibrationInterval);
+            clearTimeout(vibrationTimeout);
             navigator.vibrate(0); // Stop any ongoing vibrations
-
-            // Release wake lock
+            console.log('Vibration stopped');
             releaseWakeLock();
         });
 
