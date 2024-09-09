@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Morse Code Meditation Web App</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+            padding: 20px;
+        }
+        input, button {
+            margin: 10px;
+            padding: 10px;
+            font-size: 16px;
+        }
+        button {
+            cursor: pointer;
+        }
+        #morse-display {
+            margin-top: 20px;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <h1>Morse Code Meditation: "May all beings be free from suffering"</h1>
+    <p>Adjust the Morse code timing below:</p>
+    
+    <label for="dot-duration">Dot Duration (ms):</label>
+    <input type="number" id="dot-duration" value="200" min="50" max="1000"><br>
+    
+    <label for="dash-duration">Dash Duration (ms):</label>
+    <input type="number" id="dash-duration" value="600" min="150" max="3000"><br>
+    
+    <label for="pause-duration">Pause Duration (ms):</label>
+    <input type="number" id="pause-duration" value="200" min="50" max="1000"><br>
+    
+    <button id="start-button">Start</button>
+    <button id="stop-button">Stop</button>
+
+    <div id="morse-display">Message: "May all beings be free from suffering"</div>
+    
+    <script>
+        const message = "May all beings be free from suffering";
+        const morseCodeMap = {
+            'A': '.-', 'B': '-...', 'C': '-.-.', 'D': '-..', 'E': '.', 'F': '..-.', 'G': '--.',
+            'H': '....', 'I': '..', 'J': '.---', 'K': '-.-', 'L': '.-..', 'M': '--', 'N': '-.',
+            'O': '---', 'P': '.--.', 'Q': '--.-', 'R': '.-.', 'S': '...', 'T': '-', 'U': '..-',
+            'V': '...-', 'W': '.--', 'X': '-..-', 'Y': '-.--', 'Z': '--..', '1': '.----',
+            '2': '..---', '3': '...--', '4': '....-', '5': '.....', '6': '-....', '7': '--...',
+            '8': '---..', '9': '----.', '0': '-----', ' ': ' '
+        };
+
+        let vibrationInterval;
+        let wakeLock = null;
+
+        function textToMorse(text) {
+            return text.toUpperCase().split('').map(char => morseCodeMap[char] || '').join(' ');
+        }
+
+        const morseCodeMessage = textToMorse(message);
+
+        document.getElementById('morse-display').innerText = `Morse Code: ${morseCodeMessage}`;
+
+        // Function to request wake lock
+        async function requestWakeLock() {
+            if ('wakeLock' in navigator) {
+                try {
+                    wakeLock = await navigator.wakeLock.request('screen');
+                    console.log('Wake lock is active');
+                } catch (err) {
+                    console.error(`Error with wake lock: ${err.name}, ${err.message}`);
+                }
+            } else {
+                console.log("Wake Lock API not supported.");
+            }
+        }
+
+        // Function to release wake lock
+        function releaseWakeLock() {
+            if (wakeLock !== null) {
+                wakeLock.release()
+                    .then(() => {
+                        wakeLock = null;
+                        console.log('Wake lock released');
+                    })
+                    .catch(err => console.error(`Failed to release wake lock: ${err.name}, ${err.message}`));
+            }
+        }
+
+        function playMorseCode() {
+            const dotDuration = parseInt(document.getElementById('dot-duration').value);
+            const dashDuration = parseInt(document.getElementById('dash-duration').value);
+            const pauseDuration = parseInt(document.getElementById('pause-duration').value);
+            
+            let pattern = [];
+
+            for (let char of morseCodeMessage) {
+                if (char === '.') {
+                    pattern.push(dotDuration);
+                } else if (char === '-') {
+                    pattern.push(dashDuration);
+                }
+                // Add a pause after each dot or dash
+                pattern.push(pauseDuration);
+            }
+
+            // Repeat the vibration pattern indefinitely with a 1-second pause after each cycle
+            const totalPatternDuration = pattern.reduce((a, b) => a + b, 0) + 1000; // Add 1000 ms (1 second) pause between cycles
+
+            vibrationInterval = setInterval(() => {
+                navigator.vibrate(pattern); // Play the pattern
+                console.log('Vibrating with pattern:', pattern);
+            }, totalPatternDuration);
+        }
+
+        document.getElementById('start-button').addEventListener('click', () => {
+            if (navigator.vibrate) {
+                requestWakeLock();
+                playMorseCode(); // Start vibrating in a loop
+            } else {
+                alert("Your browser doesn't support the Vibration API.");
+            }
+        });
+
+        document.getElementById('stop-button').addEventListener('click', () => {
+            clearInterval(vibrationInterval); // Stop the loop
+            navigator.vibrate(0); // Stop any ongoing vibrations
+            console.log('Vibration stopped');
+            releaseWakeLock();
+        });
+
+        // Release wake lock if the page becomes hidden
+        document.addEventListener('visibilitychange', () => {
+            if (document.visibilityState === 'hidden') {
+                releaseWakeLock();
+            }
+        });
+    </script>
+</body>
+</html>
