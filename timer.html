@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mississippi Timer</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+            margin-top: 50px;
+        }
+        button, input {
+            padding: 10px 20px;
+            margin: 10px;
+            font-size: 16px;
+        }
+        #custom-time {
+            width: 100px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Mississippi Timer</h1>
+
+    <!-- Preset Buttons -->
+    <button onclick="startTimer(5)">5 Seconds</button>
+    <button onclick="startTimer(10)">10 Seconds</button>
+    <button onclick="startTimer(30)">30 Seconds</button>
+
+    <!-- Custom Time Input -->
+    <div>
+        <input type="number" id="custom-time" placeholder="Seconds" min="1">
+        <button onclick="startCustomTimer()">Start Custom Timer</button>
+    </div>
+
+    <!-- JavaScript for Timer and Speech -->
+    <script>
+        function speak(text) {
+            const utterance = new SpeechSynthesisUtterance(text);
+            utterance.rate = 1;  // Adjust speech rate if needed
+            window.speechSynthesis.speak(utterance);
+        }
+
+        function countdown(seconds) {
+            let currentSecond = seconds;
+            
+            const interval = setInterval(() => {
+                if (currentSecond > 0) {
+                    speak(`${currentSecond} Mississippi`);
+                    currentSecond--;
+                } else {
+                    speak("Time's up!");
+                    clearInterval(interval);
+                }
+            }, 1000);
+        }
+
+        function startTimer(seconds) {
+            countdown(seconds);
+        }
+
+        function startCustomTimer() {
+            const customTime = document.getElementById('custom-time').value;
+            const seconds = parseInt(customTime, 10);
+
+            if (!isNaN(seconds) && seconds > 0) {
+                countdown(seconds);
+            } else {
+                alert("Please enter a valid number of seconds.");
+            }
+        }
+    </script>
+</body>
+</html>
