@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <style>
+    body {
+      background: #0a0a1a;
+      margin: 0;
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      min-height: 100vh;
+      font-family: 'Arial', sans-serif;
+      color: #fff;
+      overflow: hidden;
+    }
+    #canvas-container {
+      position: relative;
+      width: 800px;
+      height: 600px;
+    }
+    canvas {
+      position: absolute;
+      top: 0;
+      left: 0;
+    }
+    .controls {
+      margin-top: 20px;
+      display: flex;
+      gap: 20px;
+      align-items: center;
+    }
+    button {
+      background: rgba(255,255,255,0.1);
+      border: 1px solid rgba(255,255,255,0.3);
+      color: #fff;
+      padding: 10px 20px;
+      cursor: pointer;
+      border-radius: 4px;
+      transition: all 0.3s;
+    }
+    button:hover {
+      background: rgba(255,255,255,0.2);
+    }
+    #equation {
+      position: absolute;
+      top: 20px;
+      left: 20px;
+      font-family: monospace;
+      font-size: 14px;
+      color: rgba(255,255,255,0.7);
+    }
+    .thought {
+      position: absolute;
+      color: rgba(255,255,255,0.6);
+      font-size: 12px;
+      pointer-events: none;
+      transition: opacity 0.5s;
+    }
+  </style>
+</head>
+<body>
+  <div id="equation"></div>
+  <div id="canvas-container">
+    <canvas id="mainCanvas"></canvas>
+  </div>
+  <div class="controls">
+    <button onclick="toggleAnimation()">Pause/Play</button>
+    <button onclick="resetAnimation()">Reset</button>
+  </div>
+
+  <script>
+    const canvas = document.getElementById('mainCanvas');
+    const ctx = canvas.getContext('2d');
+    const equationDiv = document.getElementById('equation');
+    let animationFrame;
+    let isPlaying = true;
+    let time = 0;
+
+    // Resize canvas for better resolution
+    function resizeCanvas() {
+      const container = document.getElementById('canvas-container');
+      canvas.width = container.offsetWidth;
+      canvas.height = container.offsetHeight;
+    }
+    resizeCanvas();
+    window.addEventListener('resize', resizeCanvas);
+
+    // Modified Fibonacci sequence with philosophical interpolation
+    function philosophicalFibonacci(n, t) {
+      const phi = (1 + Math.sqrt(5)) / 2;
+      const consciousness = Math.sin(t * 0.01) * 0.5 + 0.5;
+      return Math.pow(phi, n) * consciousness;
+    }
+
+    // Color generation based on golden ratio
+    function generateColor(n, t) {
+      const hue = (n * 137.5 + t) % 360;
+      const saturation = 70 + Math.sin(t * 0.02) * 30;
+      const lightness = 50 + Math.cos(t * 0.01) * 20;
+      return `hsl(${hue}, ${saturation}%, ${lightness}%)`;
+    }
+
+    // Draw a single point in the consciousness field
+    function drawPoint(x, y, size, color, alpha) {
+      ctx.beginPath();
+      ctx.arc(x, y, size, 0, Math.PI * 2);
+      ctx.fillStyle = color.replace(')', `, ${alpha})`);
+      ctx.fill();
+    }
+
+    // Main animation function
+    function animate() {
+      if (!isPlaying) return;
+      
+      ctx.fillStyle = 'rgba(10, 10, 26, 0.1)';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+      const centerX = canvas.width / 2;
+      const centerY = canvas.height / 2;
+
+      for (let i = 0; i < 20; i++) {
+        const radius = philosophicalFibonacci(i, time);
+        const angle = i * Math.PI * 0.618033988749895 + time * 0.01;
+        const x = centerX + Math.cos(angle) * radius;
+        const y = centerY + Math.sin(angle) * radius;
+        const size = Math.max(1, 20 - i);
+        const color = generateColor(i, time);
+        
+        // Draw main point
+        drawPoint(x, y, size, color, 0.8);
+        
+        // Draw trailing points
+        for (let j = 1; j <= 5; j++) {
+          const trailAngle = angle - j * 0.1;
+          const trailX = centerX + Math.cos(trailAngle) * radius;
+          const trailY = centerY + Math.sin(trailAngle) * radius;
+          drawPoint(trailX, trailY, size * 0.5, color, 0.3 / j);
+        }
+      }
+
+      // Update equation display
+      const currentValue = philosophicalFibonacci(time % 20, time).toFixed(2);
+      equationDiv.innerHTML = `φ(t) = φ^n * consciousness(t)<br>Current value: ${currentValue}`;
+
+      time += 0.5;
+      animationFrame = requestAnimationFrame(animate);
+    }
+
+    function toggleAnimation() {
+      isPlaying = !isPlaying;
+      if (isPlaying) animate();
+    }
+
+    function resetAnimation() {
+      time = 0;
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      if (!isPlaying) {
+        isPlaying = true;
+        animate();
+      }
+    }
+
+    // Start the animation
+    animate();
+
+    // Add philosophical thoughts that fade in and out
+    const thoughts = [
+      "Consciousness spirals outward...",
+      "Each iteration brings new understanding",
+      "The boundary between known and unknown blurs",
+      "Patterns emerge from chaos",
+      "Truth follows the golden ratio"
+    ];
+
+    thoughts.forEach((thought, i) => {
+      const div = document.createElement('div');
+      div.className = 'thought';
+      div.textContent = thought;
+      div.style.top = `${100 + i * 40}px`;
+      div.style.right = '20px';
+      document.body.appendChild(div);
+    });
+  </script>
+</body>
+</html>
